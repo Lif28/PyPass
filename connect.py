@@ -3,19 +3,27 @@ from pydrive2.drive import GoogleDrive
 from cryptography.fernet import Fernet
 import os
 import string
-import time
 
+logs = 'logs.txt'
+FILE = None
 def find_key():
     global FILE
     for i in string.ascii_uppercase:
         if os.path.exists(fr"{i}:\masterkey.key"):
             FILE = i
 
-def encrypt_file(input_path: str, output_path: str):
+def encrypt(input_path: str, output_path: str, file=None):
+    # Important for ensure the program doesn't blow up
+    if file is None:
+        find_key()
+        file = fr"{FILE}:\masterkey.key"
+
     try:
-        fernet = Fernet(open(fr"{FILE}:\masterkey.key", "rb").read())
-    except:
-        return -1
+        fernet = Fernet(open(file, "rb").read())
+    except Exception as e:
+        with open('logs.txt', 'a') as logs:
+            logs.write(f"[ERR] generate_new_key: {e}")
+            return -1
     with open(input_path, 'rb') as f:
         data = f.read()
     encrypted = fernet.encrypt(data)
@@ -23,9 +31,13 @@ def encrypt_file(input_path: str, output_path: str):
         f.write(encrypted)
     return
 
-def decrypt_file(input_path: str, output_path: str):
+def decrypt(input_path: str, output_path: str, file=None):
+    # Important for ensure the program doesn't blow up
+    if file is None:
+        find_key()
+        file = fr"{FILE}:\masterkey.key"
     try:
-        fernet = Fernet(open(fr"{FILE}:\masterkey.key", "rb").read())
+        fernet = Fernet(open(file, "rb").read())
     except:
         return -1
     with open(input_path, 'rb') as f:
@@ -41,36 +53,65 @@ drive = None
 
 def authenticate():
     global gauth, drive
+    find_key()
 
-    if gauth and drive: return
+    # Ensure we have client secrets
+    if not os.path.exists('client_secrets.json'):
+        if not os.path.exists('client_secrets.enc'):
+            with open(logs, 'a') as log:
+                log.write("\n[ERR] Missing both client_secrets files\n")
+            return -1
+        if decrypt('client_secrets.enc', 'client_secrets.json') == -1:
+            return -1
+    
+    if gauth and drive: return 0
     gauth = GoogleAuth()
     gauth.LoadClientConfigFile("client_secrets.json")
-    if os.path.exists(r"token.enc"):
-        if decrypt_file("token.enc", "token.json") == -1:
-            return -2
-
+    if os.path.exists("token.enc") and not os.path.exists('token.json'):
+        if decrypt("token.enc", "token.json") == -1:
+            return -1
         try:
             gauth.LoadCredentialsFile("token.json")
             # New Token
             if gauth.credentials is None or gauth.access_token_expired:
                 gauth.Refresh()
+
         except Exception as e:
-            print("Error", e)
-            gauth.LocalWebserverAuth()  
+            with open('logs.txt', 'a') as logs:
+                logs.write(f'\n[ERR] Authentication: {e}')
+            gauth.LocalWebserverAuth() 
+        
+    elif os.path.exists('token.json'):
+        # Token not encrypted --> old token has been used to decrypt token.enc and we'll use token.json directly.
+        try:
+            gauth.LoadCredentialsFile("token.json")
+            # New Token
+            if gauth.credentials is None or gauth.access_token_expired:
+                gauth.Refresh()
+
+        except Exception as e:
+            with open('logs.txt', 'a') as logs:
+                logs.write(f'\n[ERR] Authentication: {e}')
+            gauth.LocalWebserverAuth() 
+
     else:
         gauth.LocalWebserverAuth()  
         
     gauth.SaveCredentialsFile("token.json")
-    encrypt_file("token.json", "token.enc")
+    encrypt("token.json", "token.enc")
+    encrypt("client_secrets.json", "client_secrets.enc")
     os.remove("token.json")
+    os.remove("client_secrets.json")
     drive = GoogleDrive(gauth)
 
 def Upload():
-    if authenticate() == -2:
-        return -2
-
-    if encrypt_file("logins.json", "logins.enc") == -1:
-        return -2
+        
+    # Error 2
+    if encrypt("logins.json", "logins.enc") == -1:
+        with open('logs.txt', 'a') as logs:
+            logs.write('\n[ERR] Insert the USB key\n')
+            return
+        
     try:
         ID = None
         if os.path.exists(r"ID.txt"):
@@ -91,30 +132,52 @@ def Upload():
         with open("ID.txt", "w") as file:
             file.write(file_drive['id'])
 
-        return 0
-
     except Exception as e:
-        print("Upload error:", e)
-        return -1
+        with open('logs.txt', 'a') as logs:
+            logs.write(f'\n[ERR] Upload: {e}\n')
+            return
     
 def Download():
     find_key()
-    time.sleep(0.5)
-    if authenticate() == -2:
-        return -2
+    #Error 1
     try: 
         with open(r"ID.txt", "r") as file:
             ID = file.read().strip()
 
         file_drive = drive.CreateFile(({'id': ID}))
         file_drive.GetContentFile('logins.enc')
-        if decrypt_file("logins.enc", "logins.json") == -1:
-            return -2
+
+        #Error 2
+        if decrypt("logins.enc", "logins.json") == -1:
+            with open('logs.txt', 'a') as logs:
+                logs.write('\n[ERR] Insert the USB key\n')
         
         os.remove("logins.enc")
-        return 0
     
     except Exception as e:
-        print(e)
-        return -1
-    
+        with open('logs.txt', 'a') as logs:
+            logs.write(f'\n[ERR] Download: {e}\n')
+            return
+
+
+"""def Download_for_old_token():
+    find_key()
+    try: 
+        with open(r"ID.txt", "r") as file:
+            ID = file.read().strip()
+
+        file_drive = drive.CreateFile(({'id': ID}))
+        file_drive.GetContentFile('logins.enc')
+
+        #Error 2
+        if decrypt("logins.enc", "logins.json", ) == -1:
+            with open('logs.txt', 'a') as logs:
+                logs.write('\n[ERR] Insert the USB key\n')
+        
+        os.remove("logins.enc")
+
+    except Exception as e:
+        with open('logs.txt', 'a') as logs:
+            logs.write(f'\n[ERR] 1 {e}\n')
+            return"""
+

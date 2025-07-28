@@ -1,13 +1,12 @@
+import os
 from nicegui import ui, app
 import threading
 import json
-import os
 from cryptography.fernet import Fernet
 import random
 import signal
 import string
 import pyperclip
-import os
 from connect import *
 
 FILE = None
@@ -143,8 +142,7 @@ def encrypt_with_new_token():
             os.remove('logins.json')
             os.remove('token.json')
             os.remove('client_secrets.json')
-            with open('.token_migrated', 'w') as f:
-                f.write('ok')
+            # Token updated
             return 0
             
         except Exception as e:
@@ -197,12 +195,7 @@ def check_old_token():
         if decrypt_file('token.enc', 'token.json') != -1:
             # Token is up to date!
             os.remove('token.json')
-            if os.path.exists('.token_migrated'):
-                with open('.token_migrated', 'w') as file:
-                    file.write('ok')
             return
-        if os.path.exists('.token_migrated'):
-            os.remove('.token_migrated')
         
         if os.path.exists(fr'{FILE}:\masterkey_old.key'):
             return migrate_from_old_token()
@@ -231,8 +224,9 @@ def home_page():
             return ui.notify("Old token migrated!", type="positive")
         elif result == -1:
             return ui.notify('Error during the process, please contact the developer or try again later... ', type='negative')
-        elif result ==-2:
-            return ui.notify('Please insert the USB key', type="negative")
+        #elif result ==-2:
+            #return ui.notify('Please insert the USB key', type="negative")
+        #    return -2
         elif result == -3:
             return ui.notify('Old token not found!', type='negative')
 
@@ -243,11 +237,13 @@ def home_page():
             ui.label('Password Manager').classes('text-3xl font-bold text-center mb-8')
             if os.path.exists(rf"{FILE}:\masterkey.key"):
                 with ui.column().classes('gap-4'):
-                    if not os.path.exists("logins.json") or os.path.getsize('logins.json') <= 2:
+                    if not os.path.exists("logins.json") or os.path.getsize('logins.json') == 0:
                         ui.button('Personal', on_click=show_personal, icon='person').classes('w-full h-12 text-lg').props('color=primary size=lg').disable()
                         find()
                         if FILE != None:
+                            print(FILE)
                             try:
+                                authenticate()
                                 threading.Thread(target=Download).start()
                                 decrypt_file('logins.enc', 'logins.json')
                             except Exception as e: 
@@ -353,8 +349,7 @@ def alert():
             os.remove('logins.json')
             os.remove('token.json')
             os.remove('client_secrets.json')
-            with open('.token_migrated', 'w') as file:
-                file.write('ok')
+            # new token created
             return ui.notify(f"Token updated!", type='positive'), dialog.close()
             
         except Exception as e:
@@ -593,17 +588,19 @@ if __name__ in {"__main__", "__mp_main__"}:
                 logs.write('\n[ERR] Authentication\n')
         else:
             if os.path.exists("token.enc"):
-                threading.Thread(target=Download).start() 
+                download_thread = threading.Thread(target=Download)
+                download_thread.start()
+                download_thread.join()
             else:
                 Download()
     except:
         # This means we have a new token to use ...
         pass
+
     ui.run(
             title='Password Manager',
             port=5000,
+            favicon='🔐',
+            reload = False,
             show=True,
-            favicon='🔐'
         )
-
-

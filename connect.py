@@ -52,6 +52,7 @@ gauth = None
 drive = None
 
 def authenticate():
+
     global gauth, drive
     find_key()
 
@@ -67,6 +68,7 @@ def authenticate():
     if gauth and drive: return 0
     gauth = GoogleAuth()
     gauth.LoadClientConfigFile("client_secrets.json")
+
     if os.path.exists("token.enc") and not os.path.exists('token.json'):
         if decrypt("token.enc", "token.json") == -1:
             return -1
@@ -110,8 +112,7 @@ def Upload():
     if encrypt("logins.json", "logins.enc") == -1:
         with open('logs.txt', 'a') as logs:
             logs.write('\n[ERR] Insert the USB key\n')
-            return
-        
+            return   
     try:
         ID = None
         if os.path.exists(r"ID.txt"):
@@ -143,6 +144,9 @@ def Download():
     try: 
         with open(r"ID.txt", "r") as file:
             ID = file.read().strip()
+        
+        if os.path.exists("logins.enc"):
+            os.remove("logins.enc")
 
         file_drive = drive.CreateFile(({'id': ID}))
         file_drive.GetContentFile('logins.enc')
@@ -151,33 +155,10 @@ def Download():
         if decrypt("logins.enc", "logins.json") == -1:
             with open('logs.txt', 'a') as logs:
                 logs.write('\n[ERR] Insert the USB key\n')
-        
+
         os.remove("logins.enc")
-    
+
     except Exception as e:
         with open('logs.txt', 'a') as logs:
             logs.write(f'\n[ERR] Download: {e}\n')
             return
-
-
-"""def Download_for_old_token():
-    find_key()
-    try: 
-        with open(r"ID.txt", "r") as file:
-            ID = file.read().strip()
-
-        file_drive = drive.CreateFile(({'id': ID}))
-        file_drive.GetContentFile('logins.enc')
-
-        #Error 2
-        if decrypt("logins.enc", "logins.json", ) == -1:
-            with open('logs.txt', 'a') as logs:
-                logs.write('\n[ERR] Insert the USB key\n')
-        
-        os.remove("logins.enc")
-
-    except Exception as e:
-        with open('logs.txt', 'a') as logs:
-            logs.write(f'\n[ERR] 1 {e}\n')
-            return"""
-

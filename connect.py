@@ -64,7 +64,7 @@ def authenticate():
             return -1
         if decrypt('client_secrets.enc', 'client_secrets.json') == -1:
             return -1
-    
+
     if gauth and drive: return 0
     gauth = GoogleAuth()
     gauth.LoadClientConfigFile("client_secrets.json")
@@ -161,4 +161,4 @@ def Download():
     except Exception as e:
         with open('logs.txt', 'a') as logs:
             logs.write(f'\n[ERR] Download: {e}\n')
-            return
+            return -1

@@ -9,14 +9,14 @@ FILE = None
 def find_key():
     global FILE
     for i in string.ascii_uppercase:
-        if os.path.exists(fr"{i}:\masterkey.key"):
+        if os.path.exists(fr"{i}:\PyPass\masterkey.key"):
             FILE = i
 
 def encrypt(input_path: str, output_path: str, file=None):
     # Important for ensure the program doesn't blow up
     if file is None:
         find_key()
-        file = fr"{FILE}:\masterkey.key"
+        file = fr"{FILE}:\PyPass\masterkey.key"
 
     try:
         fernet = Fernet(open(file, "rb").read())
@@ -35,7 +35,7 @@ def decrypt(input_path: str, output_path: str, file=None):
     # Important for ensure the program doesn't blow up
     if file is None:
         find_key()
-        file = fr"{FILE}:\masterkey.key"
+        file = fr"{FILE}:\PyPass\masterkey.key"
     try:
         fernet = Fernet(open(file, "rb").read())
     except:
@@ -115,8 +115,8 @@ def Upload():
             return   
     try:
         ID = None
-        if os.path.exists(r"ID.txt"):
-            with open("ID.txt", "r") as file:
+        if os.path.exists(fr"{FILE}:\PyPass\ID.txt"):
+            with open(fr"{FILE}:\PyPass\ID.txt", "r") as file:
                 ID = file.read().strip()
 
         if ID:
@@ -130,7 +130,7 @@ def Upload():
         file_drive.Upload()
 
         # Save/Update ID
-        with open("ID.txt", "w") as file:
+        with open(fr"{FILE}:\PyPass\ID.txt", "w") as file:
             file.write(file_drive['id'])
 
     except Exception as e:
@@ -142,7 +142,7 @@ def Download():
     find_key()
     #Error 1
     try: 
-        with open(r"ID.txt", "r") as file:
+        with open(fr"{FILE}:\PyPass\ID.txt", "r") as file:
             ID = file.read().strip()
         
         if os.path.exists("logins.enc"):

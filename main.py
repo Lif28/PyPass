@@ -32,7 +32,7 @@ def secure_erase(s):
 def find():
     global FILE
     for i in string.ascii_uppercase:
-        if os.path.exists(fr"{i}:\masterkey.key"):
+        if os.path.exists(fr"{i}:\PyPass\masterkey.key"):
             FILE = i
 def ensure_file():
     global FILE
@@ -50,7 +50,7 @@ def encrypt_file(input_path: str, output_path: str, file=None):
     # Important for ensure the program doesn't blow up
     if file is None:
         ensure_file()
-        file = fr"{FILE}:\masterkey.key"
+        file = fr"{FILE}:\PyPass\masterkey.key"
 
     try:
         fernet = Fernet(open(file, "rb").read())
@@ -69,7 +69,7 @@ def decrypt_file(input_path: str, output_path: str, file=None):
     # Important for ensure the program doesn't blow up
     if file is None:
         ensure_file()
-        file = fr"{FILE}:\masterkey.key"
+        file = fr"{FILE}:\PyPass\masterkey.key"
     try:
         fernet = Fernet(open(file, "rb").read())
     except:
@@ -107,7 +107,7 @@ def encrypt_password(password: str, file=None) -> str:
             ui.notify(str(e), type='negative')
             return
             #raise FileNotFoundError("USB key with masterkey.key not found.")
-        file = fr"{FILE}:\masterkey.key"
+        file = fr"{FILE}:\PyPass\masterkey.key"
     fernet = Fernet(open(file, "rb").read())
     return fernet.encrypt(password.encode()).decode()
 
@@ -120,7 +120,7 @@ def decrypt_password(encrypted: str, file=None) -> str:
             ui.notify(str(e), type='negative')
             return
             #raise FileNotFoundError("USB key with masterkey.key not found.")
-        file = fr"{FILE}:\masterkey.key"
+        file = fr"{FILE}:\PyPass\masterkey.key"
     fernet = Fernet(open(file, "rb").read())
     return fernet.decrypt(encrypted.encode()).decode()
 
@@ -182,7 +182,7 @@ def migrate_from_old_token():
     global FILE
     find()
     try:
-        key_path = fr'{FILE}:\masterkey_old.key'
+        key_path = fr'{FILE}:\PyPass\masterkey_old.key'
 
         if not os.path.exists('token.json'):
             if decrypt_file('token.enc', 'token.json', file=key_path) == -1:
@@ -223,7 +223,7 @@ def check_old_token():
             os.remove('token.json')
             return
         
-        if os.path.exists(fr'{FILE}:\masterkey_old.key'):
+        if os.path.exists(fr'{FILE}:\PyPass\masterkey_old.key'):
             return migrate_from_old_token()
         
         return -4
@@ -273,7 +273,7 @@ def home_page():
     with ui.column().classes('w-full max-w-md mx-auto mt-10 gap-4'):
         with ui.card().classes('items-center justify-center w-full p-6').style("background-color: #EFEFEF"):
             ui.label('Password Manager').classes('text-3xl font-bold text-center mb-8')
-            if os.path.exists(rf"{FILE}:\masterkey.key"):
+            if os.path.exists(rf"{FILE}:\PyPass\masterkey.key"):
                 with ui.column().classes('gap-4'):
                     if not os.path.exists("logins.json") or os.path.getsize('logins.json') <= 1:
                         ui.button('Personal', on_click=show_personal, icon='person').classes('w-full h-12 text-lg').props('color=primary size=lg').disable()
@@ -329,10 +329,10 @@ def alert():
         try:
             if os.path.exists('logins.enc'):
                 os.remove('logins.enc')
-            if os.path.exists(fr'{FILE}:\masterkey_old_old.key'):
-                os.remove(fr'{FILE}:\masterkey_old_old.key')
-            if os.path.exists(fr'{FILE}:\masterkey_old.key'):
-                os.rename(fr'{FILE}:\masterkey_old.key', fr'{FILE}:\masterkey_old_old.key')
+            if os.path.exists(fr'{FILE}:\PyPass\masterkey_old_old.key'):
+                os.remove(fr'{FILE}:\PyPass\masterkey_old_old.key')
+            if os.path.exists(fr'{FILE}:\PyPass\masterkey_old.key'):
+                os.rename(fr'{FILE}:\PyPass\masterkey_old.key', fr'{FILE}:\PyPass\masterkey_old_old.key')
 
             os.remove('token.enc')
             os.remove('client_secrets.enc')
@@ -346,13 +346,13 @@ def alert():
             ui.notify(str(e), type='negative')
             return
         try:
-            os.rename(fr'{FILE}:\masterkey.key', fr'{FILE}:\masterkey_old.key')
+            os.rename(fr'{FILE}:\PyPass\masterkey.key', fr'{FILE}:\PyPass\masterkey_old.key')
         except Exception as e:
             with open('logs.txt', 'a') as logs:
                 logs.write(f"\n[ERR] generate_new_key: {e}")
                 return ui.notify(f"[ERR] {e} ", type='negative')
 
-        key_path = fr"{FILE}:\masterkey.key"
+        key_path = fr"{FILE}:\PyPass\masterkey.key"
         key = Fernet.generate_key()
         with open(key_path, "wb") as file:
             file.write(key)
@@ -429,7 +429,7 @@ def personal_page():
 
     with ui.column().classes('w-full max-w-md mx-auto mt-10 gap-4 items-center justify-center'):
         # logins.json
-        if os.path.exists('logins.json') and os.path.exists(fr"{FILE}:\masterkey.key"):
+        if os.path.exists('logins.json') and os.path.exists(fr"{FILE}:\PyPass\masterkey.key"):
             with open('logins.json', 'r') as file:
                 data = json.load(file)
 
@@ -498,7 +498,7 @@ def add_login():
                 kill()
 
             if all(i != "" for i in [service.value, username.value, password.value]):
-                if os.path.exists(fr"{FILE}:\masterkey.key"):
+                if os.path.exists(fr"{FILE}:\PyPass\masterkey.key"):
                     login =  {"service": f"{service.value}", "username":f"{encrypt_password(username.value)}", "password": f"{encrypt_password(password.value)}"}
                     # Writes
                     if os.path.exists('logins.json'):
@@ -601,7 +601,7 @@ def edit_passwd(item):
     dialog.open()
 
 def remove_passwd(service, dialog):
-    if os.path.exists(fr"{FILE}:\masterkey.key"):
+    if os.path.exists(fr"{FILE}:\PyPass\masterkey.key"):
         with open('logins.json', 'r') as f:
             data = json.load(f)
         if check_network() == 0:

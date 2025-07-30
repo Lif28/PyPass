@@ -275,7 +275,7 @@ def home_page():
             ui.label('Password Manager').classes('text-3xl font-bold text-center mb-8')
             if os.path.exists(rf"{FILE}:\masterkey.key"):
                 with ui.column().classes('gap-4'):
-                    if not os.path.exists("logins.json") or os.path.getsize('logins.json') == 0:
+                    if not os.path.exists("logins.json") or os.path.getsize('logins.json') <= 1:
                         ui.button('Personal', on_click=show_personal, icon='person').classes('w-full h-12 text-lg').props('color=primary size=lg').disable()
                         find()
                         if FILE != None:
@@ -292,7 +292,7 @@ def home_page():
                         if os.path.exists('logs.txt'):
                             os.remove('logs.txt')
 
-                    if check_network() != 0:
+                    if check_network() == -1:
                         ui.button('Add Password', on_click=show_add_password, icon='add').classes('w-full h-12 text-lg').props('color=primary size=lg').disable()
                         ui.button('New Token', on_click= warning, icon='generating_tokens').classes('w-full h-12 text-lg').props('color="primary" size=lg').disable()
                     else:
@@ -493,7 +493,7 @@ def add_login():
                 # Google Drive
 
                 threading.Thread(target=Upload).start()
-                if check_network() != 0:
+                if check_network() == -1:
                     return ui.notify('Check your internet connection!', type='warning')
                 kill()
 
@@ -586,7 +586,7 @@ def edit_passwd(item):
 
                 threading.Thread(target=Upload).start()
 
-                if check_network() != 0: return ui.notify('Check your internet connection!', type='warning')
+                if check_network() == -1: return ui.notify('Check your internet connection!', type='warning')
 
                 # Clear password in memory
                 dialog.close()

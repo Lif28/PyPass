@@ -1,28 +1,35 @@
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
+from webdav3.client import Client
 from cryptography.fernet import Fernet
-import os
 import string
+import os
+import json
 
-logs = 'logs.txt'
 FILE = None
-def find_key():
+
+def find():
     global FILE
     for i in string.ascii_uppercase:
         if os.path.exists(fr"{i}:\PyPass\masterkey.key"):
             FILE = i
 
-def encrypt(input_path: str, output_path: str, file=None):
+def ensure_file():
+    global FILE
+    if FILE is None:
+        find()
+    if FILE is None:
+        raise  FileNotFoundError('USB key???')
+    
+def encryptfile(input_path: str, output_path: str, file=None):
     # Important for ensure the program doesn't blow up
     if file is None:
-        find_key()
+        ensure_file()
         file = fr"{FILE}:\PyPass\masterkey.key"
 
     try:
         fernet = Fernet(open(file, "rb").read())
     except Exception as e:
         with open('logs.txt', 'a') as logs:
-            logs.write(f"[ERR] generate_new_key: {e}")
+            logs.write(f"\n[ERR] encrypt_file: {e}")
             return -1
     with open(input_path, 'rb') as f:
         data = f.read()
@@ -31,134 +38,148 @@ def encrypt(input_path: str, output_path: str, file=None):
         f.write(encrypted)
     return
 
-def decrypt(input_path: str, output_path: str, file=None):
+def decryptfile(input_path: str, output_path: str, file=None):
     # Important for ensure the program doesn't blow up
     if file is None:
-        find_key()
+        ensure_file()
         file = fr"{FILE}:\PyPass\masterkey.key"
     try:
         fernet = Fernet(open(file, "rb").read())
     except:
         return -1
-    with open(input_path, 'rb') as f:
-        encrypted = f.read()
-    decrypted = fernet.decrypt(encrypted)
-    with open(output_path, 'wb') as f:
-        f.write(decrypted)
-    return
+    try:
+        with open(input_path, 'rb') as f:
+            encrypted = f.read()
+        decrypted = fernet.decrypt(encrypted)
+        with open(output_path, 'wb') as f:
+            f.write(decrypted)
+    except:
+        return -1
+    return 0
 
-# === AUTH ===
-gauth = None
-drive = None
-
-def authenticate():
-
-    global gauth, drive
-    find_key()
-
-    # Ensure we have client secrets
-    if not os.path.exists('client_secrets.json'):
-        if not os.path.exists('client_secrets.enc'):
-            with open(logs, 'a') as log:
-                log.write("\n[ERR] Missing both client_secrets files\n")
-            return -1
-        if decrypt('client_secrets.enc', 'client_secrets.json') == -1:
-            return -1
-
-    if gauth and drive: return 0
-    gauth = GoogleAuth()
-    gauth.LoadClientConfigFile("client_secrets.json")
-
-    if os.path.exists("token.enc") and not os.path.exists('token.json'):
-        if decrypt("token.enc", "token.json") == -1:
-            return -1
+def encrypt_pass(password: str, file=None) -> str:
+    if file is None:
+        find()
         try:
-            gauth.LoadCredentialsFile("token.json")
-            # New Token
-            if gauth.credentials is None or gauth.access_token_expired:
-                gauth.Refresh()
+            ensure_file()
+        except FileNotFoundError as e:
+            return
+            #raise FileNotFoundError("USB key with masterkey.key not found.")
+        file = fr"{FILE}:\PyPass\masterkey.key"
+    fernet = Fernet(open(file, "rb").read())
+    return fernet.encrypt(password.encode()).decode()
 
-        except Exception as e:
-            with open('logs.txt', 'a') as logs:
-                logs.write(f'\n[ERR] Authentication: {e}')
-            gauth.LocalWebserverAuth() 
+def decrypt_pass(encrypted: str, file=None) -> str:
+    if file is None:
+        find()
+        try:
+            ensure_file()
+        except FileNotFoundError as e:
+            return
+            #raise FileNotFoundError("USB key with masterkey.key not found.")
+        file = fr"{FILE}:\PyPass\masterkey.key"
+    fernet = Fernet(open(file, "rb").read())
+    return fernet.decrypt(encrypted.encode()).decode()
+
+def check_old_token():
+    global FILE
+    try:
+        ensure_file()
+    except FileNotFoundError as e:
+        return -2
+    
+    #Checks if we have new tokens to use
+    try:
+        if os.path.exists(fr'{FILE}:\PyPass\masterkey_old.key'):
+            find()
+            if decryptfile('client_secrets.enc','client_secrets.json', file=fr'{FILE}:\PyPass\masterkey_old.key') != -1:
+                return 0
+            else:
+                return
+            
+    except Exception as e:
+        with open('logs.txt', 'a') as logs:
+            logs.write(f'\n[ERR] check_old_token 0: {e}\n')
+        return -1
+
+def get_passwd():
+    if os.path.exists('client_secrets.enc'):
+        if decryptfile('client_secrets.enc', 'client_secrets.json') != -1:
+            with open('client_secrets.json', 'r') as file:
+                data = json.load(file)
+        else:
+            if check_old_token() == 0:
+                with open('client_secrets.json', 'r') as file:
+                    data = json.load(file)
+            else: 
+                with open('logs.txt', 'a') as log:
+                    log.write('[ERR] get_passwd')
         
-    elif os.path.exists('token.json'):
-        # Token not encrypted --> old token has been used to decrypt token.enc and we'll use token.json directly.
-        try:
-            gauth.LoadCredentialsFile("token.json")
-            # New Token
-            if gauth.credentials is None or gauth.access_token_expired:
-                gauth.Refresh()
+        
+        username = data['username']
+        password = data['password']
+        os.remove('client_secrets.json')
+        return username, password
+        
+    elif os.path.exists('client_secrets.json'):
+        with open('client_secrets.json', 'r') as file:
+            data = json.load(file)
 
-        except Exception as e:
-            with open('logs.txt', 'a') as logs:
-                logs.write(f'\n[ERR] Authentication: {e}')
-            gauth.LocalWebserverAuth() 
-
+        username = data['username']
+        password = data['password']
+        encryptfile('client_secrets.json', 'client_secrets.enc')
+        os.remove('client_secrets.json')
+        return username, password
     else:
-        gauth.LocalWebserverAuth()  
-        
-    gauth.SaveCredentialsFile("token.json")
-    encrypt("token.json", "token.enc")
-    encrypt("client_secrets.json", "client_secrets.enc")
-    os.remove("token.json")
-    os.remove("client_secrets.json")
-    drive = GoogleDrive(gauth)
+        return -2
+    
+username, password = get_passwd()
+
+if username == -2:
+    with open('logs.txt', 'a') as file:
+        file.write('[ERR] get_passwd: client_secrets missing!')
+
+options = {
+    'webdav_hostname': 'https://leo.it.tab.digital/remote.php/webdav/',
+    'webdav_login': username,
+    'webdav_password': password,
+}
+
+client = Client(options)
+file = 'logins.enc'
+file_ = '/logins.enc'
 
 def Upload():
-        
-    # Error 2
-    if encrypt("logins.json", "logins.enc") == -1:
-        with open('logs.txt', 'a') as logs:
-            logs.write('\n[ERR] Insert the USB key\n')
-            return   
+    # Connection
+    encryptfile('logins.json', 'logins.enc')
     try:
-        ID = None
-        if os.path.exists(fr"{FILE}:\PyPass\ID.txt"):
-            with open(fr"{FILE}:\PyPass\ID.txt", "r") as file:
-                ID = file.read().strip()
-
-        if ID:
-            # Update 
-            file_drive = drive.CreateFile({'id': ID})
+        if client.check():
+            local_file = file
+            remote_file = file_  
+            client.upload_sync(remote_path=remote_file, local_path=local_file)
+            if os.path.exists('logins.enc'):
+                os.remove('logins.enc')
+            return 0
         else:
-            # Create new file
-            file_drive = drive.CreateFile({'title': 'logins.enc'})
-
-        file_drive.SetContentFile("logins.enc")
-        file_drive.Upload()
-
-        # Save/Update ID
-        with open(fr"{FILE}:\PyPass\ID.txt", "w") as file:
-            file.write(file_drive['id'])
-
+            return -1
     except Exception as e:
         with open('logs.txt', 'a') as logs:
             logs.write(f'\n[ERR] Upload: {e}\n')
-            return
-    
+        return -2
+
 def Download():
-    find_key()
-    #Error 1
-    try: 
-        with open(fr"{FILE}:\PyPass\ID.txt", "r") as file:
-            ID = file.read().strip()
-        
-        if os.path.exists("logins.enc"):
-            os.remove("logins.enc")
-
-        file_drive = drive.CreateFile(({'id': ID}))
-        file_drive.GetContentFile('logins.enc')
-
-        #Error 2
-        if decrypt("logins.enc", "logins.json") == -1:
-            with open('logs.txt', 'a') as logs:
-                logs.write('\n[ERR] Insert the USB key\n')
-
-        os.remove("logins.enc")
-
+    try:
+        if client.check():
+            remote_file = file_       
+            local_file = file  
+            client.download_sync(remote_path=remote_file, local_path=local_file)
+            decryptfile('logins.enc', 'logins.json')
+            if os.path.exists('logins.enc'):
+                os.remove('logins.enc')
+            return 0
+        else:
+            return -1
     except Exception as e:
         with open('logs.txt', 'a') as logs:
-            logs.write(f'\n[ERR] Download: {e}\n')
-            return -1
+            logs.write(f'\n[ERR] Upload: {e}\n')
+        return -2

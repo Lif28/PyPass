@@ -15,6 +15,8 @@ from connect import *
 import ctypes
 
 FILE = None
+logins = 'logins.json'
+en_logins = 'logins.enc'
 
 def generate_qr_base64(text: str) -> str:
     img = qrcode.make(text)
@@ -34,6 +36,7 @@ def find():
     for i in string.ascii_uppercase:
         if os.path.exists(fr"{i}:\PyPass\masterkey.key"):
             FILE = i
+
 def ensure_file():
     global FILE
     if FILE is None:
@@ -129,10 +132,10 @@ def killall():
 
 def shutdown():
     try:
-        if os.path.exists('logins.json'):
-            os.remove('logins.json')
-        if os.path.exists('logins.enc'):
-            os.remove('logins.enc')
+        if os.path.exists(logins):
+            os.remove(logins)
+        if os.path.exists(en_logins):
+            os.remove(en_logins)
         ui.run_javascript('window.close()')
         time.sleep(0.5)
         app.shutdown()
@@ -141,103 +144,11 @@ def shutdown():
         shutdown()
     
 
-def encrypt_with_new_token():
-# Encripts and delete useless files
-        find()
-        with open('logins.json', 'r') as file:
-            data = json.load(file)
-        try:
-            for i in data:
-                i['username'] = encrypt_password(i['username'])
-                i['password'] = encrypt_password(i['password'])
-            with open('logins.json', 'w') as new:
-                json.dump(data, new, indent=4)
-        except Exception as e:
-            with open('logs.txt', 'a') as logs:
-                logs.write(f"\n[ERR] check_old_token 3: {e}")
-                return e
-        files = {'logins.json':'logins.enc', 'token.json':'token.enc', 'client_secrets.json':'client_secrets.enc'}
-        try:
-            for i in files.keys():
-                if encrypt_file(i, files.get(i)) == -1:
-                    return -1
-        except Exception as e:
-            with open('logs.txt', 'a') as logs:
-                logs.write(f"\n[ERR] check_old_token 4: {e}")
-                return e
-        try:
-            os.remove('logins.json')
-            os.remove('token.json')
-            os.remove('client_secrets.json')
-            # Token updated
-            return 0
-            
-        except Exception as e:
-            with open('logs.txt', 'a') as logs:
-                logs.write(f"\n[ERR] check_old_token 5: {e}")
-                return e
-        
-        
-def migrate_from_old_token():
-    global FILE
-    find()
-    try:
-        key_path = fr'{FILE}:\PyPass\masterkey_old.key'
-
-        if not os.path.exists('token.json'):
-            if decrypt_file('token.enc', 'token.json', file=key_path) == -1:
-                return -3
-        if not os.path.exists('client_secrets.json'):
-            if decrypt_file('client_secrets.enc', 'client_secrets.json', file=key_path) == -1:
-                return -3
-
-        # Auth and download
-        auth_result = authenticate()
-        with open('logs.txt', 'a') as logs:
-            logs.write(f'\n[INFO] auth_result: {auth_result}, drive: {drive}\n')
-        if auth_result == -1 or drive is None:
-            with open('logs.txt', 'a') as logs:
-                logs.write('\n[ERR] Authentication failed or drive not initialized\n')
-            return -1
-
-        Download()
-        encrypt_with_new_token()
-        return 0
-
-    except Exception as e:
-        with open('logs.txt', 'a') as logs:
-            logs.write(f'\n[ERR] migrate_from_old_token: {e}\n')
-        return -1
-
-def check_old_token():
-    global FILE
-    try:
-        ensure_file()
-    except FileNotFoundError as e:
-        return -2
-    
-    #Checks if we have new tokens to use
-    try:
-        if decrypt_file('token.enc', 'token.json') != -1:
-            # Token is up to date!
-            os.remove('token.json')
-            return
-        
-        if os.path.exists(fr'{FILE}:\PyPass\masterkey_old.key'):
-            return migrate_from_old_token()
-        
-        return -4
-            
-    except Exception as e:
-        with open('logs.txt', 'a') as logs:
-            logs.write(f'\n[ERR] check_old_token 0: {e}\n')
-        return -1
-
 def check_network():
     if os.path.exists('logs.txt'):
         with open('logs.txt', 'r') as logs:
             data = logs.read()
-        if 'Unable to find the server at www.googleapis.com' in data:
+        if 'No connection' in data:
             return -1
     else:
         return 0
@@ -250,17 +161,11 @@ def home_page():
     with ui.header(elevated=True).style('background-color: #1976d2; text-align: center; justify-content: center'):
         ui.label('PyPass - 1.0').style('font-size: 1.5rem; font-weight: bold; color: white;')
 
-    #Checks for new tokens
-    def threaded_check_old_token():
-        result = check_old_token()
-        if result == 0:
-            return ui.notify("Old token migrated!", type="positive")
-        elif result == -1:
-            return ui.notify('Error during the process, please contact the developer or try again later... ', type='negative')
-        elif result == -3:
-            return ui.notify('Old token not found!', type='negative')
-
-    threaded_check_old_token()
+    if os.path.exists('logs.txt'):
+        with open('logs.txt', 'r') as logs:
+            data = logs.read()
+        if 'client_secrets.json' or 'client_secrets.enc' in data:
+            ui.notify('[WARNING] Missing client_secrets file', type='warning')
 
     def warning():
         with ui.dialog() as dialog, ui.card().classes('w-[600px] max-w-[90vw] items-center justify-center '):
@@ -275,15 +180,13 @@ def home_page():
             ui.label('Password Manager').classes('text-3xl font-bold text-center mb-8')
             if os.path.exists(rf"{FILE}:\PyPass\masterkey.key"):
                 with ui.column().classes('gap-4'):
-                    if not os.path.exists("logins.json") or os.path.getsize('logins.json') <= 1:
+                    if not os.path.exists(logins) or os.path.getsize(logins) <= 1:
                         ui.button('Personal', on_click=show_personal, icon='person').classes('w-full h-12 text-lg').props('color=primary size=lg').disable()
                         find()
                         if FILE != None:
                             try:
-                                authenticate()
                                 threading.Thread(target=Download).start()
-                                decrypt_file('logins.enc', 'logins.json')
-                                if os.path.exists('client_secrets.json'): os.remove('client_secrets.json') # Used if we changed token and went back to /
+                                decrypt_file(en_logins, logins) # Used if we changed token and went back to /
                             except Exception as e: 
                                 ui.notify(f"[ERR] {e}", type='negative')
                     else:
@@ -304,9 +207,8 @@ def home_page():
                 find()
                 if FILE != None:
                     try:
-                        authenticate()
                         Download()
-                        decrypt_file('logins.enc', 'logins.json')
+                        decrypt_file(en_logins)
                     except: 
                         ui.notify("You're Offline")
 
@@ -315,27 +217,29 @@ def home_page():
 @ui.page('/new-token')
 def alert():
     def generate_new_key():
+        find()
+
         # Logins 
-        with open('logins.json', 'r') as file:
+        with open(logins, 'r') as file:
             data = json.load(file)
         for i in data:
             i['username'] = decrypt_password(i['username'])
             i['password'] = decrypt_password(i['password'])
-        with open('logins.json', 'w') as new:
+        with open(logins, 'w') as new:
             json.dump(data, new, indent=4)
 
-        decrypt_file('token.enc', 'token.json')
-        decrypt_file('client_secrets.enc', 'client_secrets.json')
+        if decrypt_file('client_secrets.enc', 'client_secrets.json') == -1:
+            with open('logs.txt', 'a') as logs:
+                logs.write(f"\n[ERR] generate_new_key: {e}")
+                return ui.notify(f"[ERR] stupido ", type='negative')
         try:
-            if os.path.exists('logins.enc'):
-                os.remove('logins.enc')
+            if os.path.exists(en_logins):
+                os.remove(logins)
             if os.path.exists(fr'{FILE}:\PyPass\masterkey_old_old.key'):
                 os.remove(fr'{FILE}:\PyPass\masterkey_old_old.key')
             if os.path.exists(fr'{FILE}:\PyPass\masterkey_old.key'):
                 os.rename(fr'{FILE}:\PyPass\masterkey_old.key', fr'{FILE}:\PyPass\masterkey_old_old.key')
 
-            os.remove('token.enc')
-            os.remove('client_secrets.enc')
         except Exception as e:
             with open('logs.txt', 'a') as logs:
                 logs.write(f"\n[ERR] generate_new_key: {e}")
@@ -358,24 +262,27 @@ def alert():
             file.write(key)
 
     def update_key():
+        find()
         Download()
         if check_network() == 0:
             generate_new_key()
-            with open('logins.json', 'r') as file:
+            with open(logins, 'r') as file:
                 data = json.load(file)
             try:
                 for i in data:
                     i['username'] = encrypt_password(i['username'])
                     i['password'] = encrypt_password(i['password'])
 
-                with open('logins.json', 'w') as new:
+                with open(logins, 'w') as new:
                     json.dump(data, new, indent=4)
+
+                encrypt_file('client_secrets.json', 'client_secrets.enc')
             except Exception as e:
                 with open('logs.txt', 'a') as logs:
                     logs.write(f"\n[ERR] generate_new_key: {e}")
                     return ui.notify(f"[ERR] {e} ", type='negative')
                 
-            files = {'logins.json':'logins.enc', 'token.json':'token.enc', 'client_secrets.json':'client_secrets.enc'}
+            files = {logins:en_logins}
             try:
                 for i in files.keys():
                     if encrypt_file(i, files.get(i)) == -1:
@@ -392,8 +299,7 @@ def alert():
                     return ui.notify(f"[ERR] {e} ", type='negative')
 
             try:
-                os.remove('logins.json')
-                os.remove('token.json')
+                os.remove(logins)
                 os.remove('client_secrets.json')
                 # new token created
                 
@@ -401,6 +307,7 @@ def alert():
                 with open('logs.txt', 'a') as logs:
                     logs.write(f"\n[ERR] generate_new_key 2: {e}")
                     return ui.notify(f"[ERR] {e} ", type='negative')
+
                 
             return ui.notify("Token updated!", type='positive'), dialog.close()
         else:
@@ -429,8 +336,8 @@ def personal_page():
 
     with ui.column().classes('w-full max-w-md mx-auto mt-10 gap-4 items-center justify-center'):
         # logins.json
-        if os.path.exists('logins.json') and os.path.exists(fr"{FILE}:\PyPass\masterkey.key"):
-            with open('logins.json', 'r') as file:
+        if os.path.exists(logins) and os.path.exists(fr"{FILE}:\PyPass\masterkey.key"):
+            with open(logins, 'r') as file:
                 data = json.load(file)
 
             if data:
@@ -456,7 +363,7 @@ def personal_page():
             if FILE != None:
                 try:
                     Download()
-                    decrypt_file('logins.enc', 'logins.json')
+                    decrypt_file(en_logins, logins)
                 except: 
                     ui.notify("You're Offline")
         ui.button('Back', on_click=lambda: ui.navigate.to("/"), icon='keyboard_arrow_left')
@@ -487,7 +394,7 @@ def add_login():
                 data.append(login)
 
                 # Write back to file
-                with open('logins.json', 'w') as f:
+                with open(logins, 'w') as f:
                     json.dump(data, f, indent=4)
 
                 # Google Drive
@@ -501,8 +408,8 @@ def add_login():
                 if os.path.exists(fr"{FILE}:\PyPass\masterkey.key"):
                     login =  {"service": f"{service.value}", "username":f"{encrypt_password(username.value)}", "password": f"{encrypt_password(password.value)}"}
                     # Writes
-                    if os.path.exists('logins.json'):
-                        with open('logins.json', 'r') as f:
+                    if os.path.exists(logins):
+                        with open(logins, 'r') as f:
                             try:
                                 data = json.load(f)
                                 for i in data:
@@ -560,7 +467,7 @@ def edit_passwd(item):
         def save():
             if all(i != "" for i in [service.value, username.value, password.value]):
                 # hole file
-                with open('logins.json', 'r') as f:
+                with open(logins, 'r') as f:
                     data = json.load(f)
                 # Check
                 count = 0
@@ -581,7 +488,7 @@ def edit_passwd(item):
                         break
 
                 # Writes
-                with open('logins.json', 'w') as f:
+                with open(logins, 'w') as f:
                     json.dump(data, f, indent=4)
 
                 threading.Thread(target=Upload).start()
@@ -602,11 +509,11 @@ def edit_passwd(item):
 
 def remove_passwd(service, dialog):
     if os.path.exists(fr"{FILE}:\PyPass\masterkey.key"):
-        with open('logins.json', 'r') as f:
+        with open(logins, 'r') as f:
             data = json.load(f)
         if check_network() == 0:
             data = [entry for entry in data if entry.get('service') != service]
-            with open('logins.json', 'w') as f:
+            with open(logins, 'w') as f:
                 json.dump(data, f, indent=4)
             
             threading.Thread(target=Upload).start()
@@ -682,20 +589,8 @@ if __name__ in {"__main__", "__mp_main__"}:
 
     if os.path.exists('logs.txt'):
         os.remove("logs.txt")
-    try:
-        if authenticate() == -1:
-            with open('logs.txt', 'a') as logs:
-                logs.write('\n[ERR] Authentication\n')
-        else:
-            if os.path.exists("token.enc"):
-                download_thread = threading.Thread(target=Download)
-                download_thread.start()
-                download_thread.join()
-            else:
-                Download()
-    except:
-        # This means we have a new token to use ...
-        pass
+
+    threading.Thread(target=Download()).start()
 
     ui.run(
             title='Password Manager',

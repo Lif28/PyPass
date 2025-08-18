@@ -164,7 +164,7 @@ def home_page():
     if os.path.exists('logs.txt'):
         with open('logs.txt', 'r') as logs:
             data = logs.read()
-        if 'client_secrets.json' or 'client_secrets.enc' in data:
+        if 'client_secrets.json' in data or 'client_secrets.enc' in data:
             ui.notify('[WARNING] Missing client_secrets file', type='warning')
 
     def warning():

@@ -7,6 +7,7 @@ import threading
 import time
 import json
 from cryptography.fernet import Fernet
+import asyncio
 import random
 import signal
 import string
@@ -136,14 +137,19 @@ def shutdown():
             os.remove(logins)
         if os.path.exists(en_logins):
             os.remove(en_logins)
-        ui.run_javascript('window.close()')
-        time.sleep(0.5)
-        app.shutdown()
-    except:
+        if os.path.exists('logs.txt'):
+            os.remove('logs.txt')
+        
+    except Exception as e:
+        with open('logs.txt', 'a') as log:
+            log.write(f"[ERR] shutdown failed: {e}\n")
         time.sleep(1)
         shutdown()
     
+    finally:
+        ui.run_javascript('window.close()')
 
+        app.shutdown()
 def check_network():
     if os.path.exists('logs.txt'):
         with open('logs.txt', 'r') as logs:
@@ -152,6 +158,20 @@ def check_network():
             return -1
     else:
         return 0
+    
+def update_credentials(data):
+    try:
+        with open("client_secrets.json", "w") as file:
+            json.dump(data, file, indent=4)
+    except Exception as e:
+        with open('logs.txt', 'a') as logs:
+            logs.write(f'[ERR] update_credentials: {e}, {data}')
+    if os.path.exists('client_secrets.enc'):
+        os.remove('client_secrets.enc')
+    if os.path.exists('logs.txt'):
+        os.remove('logs.txt')
+    return kill()
+
 #ui.dark_mode(value=True)
 
 # === Home Page ===
@@ -175,6 +195,21 @@ def home_page():
                 ui.button('Cancel', on_click= kill)
         dialog.open()
 
+    def update_nextcloud():
+        with open('logs.txt', 'r') as logs:
+            if '[WARNING] get_passwd: Token changed!' in logs.read():
+                print(logs.read())
+                with ui.dialog() as dialog, ui.card().classes('w-[600px] max-w-[90vw] items-center justify-center '):
+                    ui.label('Insert your nextcloud credentials:').classes('text-3xl font-bold text-center mb-8')
+                    username = ui.input('Username').style("width: 200px")
+                    password = ui.input('Password', password=True).style("width: 200px")
+                    with ui.row().classes('gap-4 justify-end'):
+                        ui.button('Save', on_click= lambda: update_credentials({"username":f"{username.value}", "password":f"{password.value}"})).props('color=negative')
+                        print(username.value, password.value)
+                        ui.button('Cancel', on_click= kill)
+                dialog.open()
+
+    
     with ui.column().classes('w-full max-w-md mx-auto mt-10 gap-4'):
         with ui.card().classes('items-center justify-center w-full p-6').style("background-color: #EFEFEF"):
             ui.label('Password Manager').classes('text-3xl font-bold text-center mb-8')
@@ -202,15 +237,9 @@ def home_page():
                         ui.button('Add Password', on_click=show_add_password, icon='add').classes('w-full h-12 text-lg').props('color=primary size=lg')
                         ui.button('New Token', on_click= warning, icon='generating_tokens').classes('w-full h-12 text-lg').props('color="primary" size=lg')
                     ui.button('Quit', on_click=shutdown, icon='highlight_off', color='#C0392B').classes('w-full h-12 text-lg text-white')
-            else:
-                ui.notify("Please insert the USB  key", type="negative")
-                find()
-                if FILE != None:
-                    try:
-                        Download()
-                        decrypt_file(en_logins)
-                    except: 
-                        ui.notify("You're Offline")
+            if os.path.exists('logs.txt'):
+                update_nextcloud()
+
 
 
 
@@ -232,29 +261,12 @@ def alert():
             with open('logs.txt', 'a') as logs:
                 logs.write(f"\n[ERR] generate_new_key: {e}")
                 return ui.notify(f"[ERR] stupido ", type='negative')
-        try:
-            if os.path.exists(en_logins):
-                os.remove(logins)
-            if os.path.exists(fr'{FILE}:\PyPass\masterkey_old_old.key'):
-                os.remove(fr'{FILE}:\PyPass\masterkey_old_old.key')
-            if os.path.exists(fr'{FILE}:\PyPass\masterkey_old.key'):
-                os.rename(fr'{FILE}:\PyPass\masterkey_old.key', fr'{FILE}:\PyPass\masterkey_old_old.key')
 
-        except Exception as e:
-            with open('logs.txt', 'a') as logs:
-                logs.write(f"\n[ERR] generate_new_key: {e}")
-                return ui.notify(f"[ERR] {e} ", type='negative')
         try:
             ensure_file()
         except FileNotFoundError as e:
             ui.notify(str(e), type='negative')
             return
-        try:
-            os.rename(fr'{FILE}:\PyPass\masterkey.key', fr'{FILE}:\PyPass\masterkey_old.key')
-        except Exception as e:
-            with open('logs.txt', 'a') as logs:
-                logs.write(f"\n[ERR] generate_new_key: {e}")
-                return ui.notify(f"[ERR] {e} ", type='negative')
 
         key_path = fr"{FILE}:\PyPass\masterkey.key"
         key = Fernet.generate_key()
@@ -574,6 +586,7 @@ def show_passwd(passwd):
 # === Start ===
 if __name__ in {"__main__", "__mp_main__"}:
     find()
+
     import sys
     class DummyStream:
         def write(self, msg):
@@ -587,15 +600,12 @@ if __name__ in {"__main__", "__mp_main__"}:
     sys.stderr = DummyStream()
     sys.stdout = DummyStream()
 
-    if os.path.exists('logs.txt'):
-        os.remove("logs.txt")
-
-    threading.Thread(target=Download()).start()
+    Download()
 
     ui.run(
             title='Password Manager',
             favicon='🔐',
             port=5000,
-            reload = False,
+            reload=False,
             show=True
         )

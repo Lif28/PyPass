@@ -17,7 +17,7 @@ def ensure_file():
     if FILE is None:
         find()
     if FILE is None:
-        raise  FileNotFoundError('USB key???')
+        raise FileNotFoundError('Insert the USB key!!!')
     
 def encryptfile(input_path: str, output_path: str, file=None):
     # Important for ensure the program doesn't blow up
@@ -50,11 +50,14 @@ def decryptfile(input_path: str, output_path: str, file=None):
     try:
         with open(input_path, 'rb') as f:
             encrypted = f.read()
+    except:
+        return -1
+    try:
         decrypted = fernet.decrypt(encrypted)
         with open(output_path, 'wb') as f:
             f.write(decrypted)
     except:
-        return -1
+        return -2
     return 0
 
 def encrypt_pass(password: str, file=None) -> str:
@@ -81,40 +84,19 @@ def decrypt_pass(encrypted: str, file=None) -> str:
     fernet = Fernet(open(file, "rb").read())
     return fernet.decrypt(encrypted.encode()).decode()
 
-def check_old_token():
-    global FILE
-    try:
-        ensure_file()
-    except FileNotFoundError as e:
-        return -2
-    
-    #Checks if we have new tokens to use
-    try:
-        if os.path.exists(fr'{FILE}:\PyPass\masterkey_old.key'):
-            find()
-            if decryptfile('client_secrets.enc','client_secrets.json', file=fr'{FILE}:\PyPass\masterkey_old.key') != -1:
-                return 0
-            else:
-                return
-            
-    except Exception as e:
-        with open('logs.txt', 'a') as logs:
-            logs.write(f'\n[ERR] check_old_token 0: {e}\n')
-        return -1
 
 def get_passwd():
     if os.path.exists('client_secrets.enc'):
-        if decryptfile('client_secrets.enc', 'client_secrets.json') != -1:
+        result = decryptfile('client_secrets.enc', 'client_secrets.json')
+        if result == 0:
             with open('client_secrets.json', 'r') as file:
                 data = json.load(file)
-        else:
-            if check_old_token() == 0:
-                with open('client_secrets.json', 'r') as file:
-                    data = json.load(file)
-            else: 
-                with open('logs.txt', 'a') as log:
-                    log.write('[ERR] get_passwd')
-        
+        elif result == -2:
+            return -2
+        else: 
+            with open('logs.txt', 'a') as log:
+                log.write('[ERR] get_passwd')
+                return -1
         
         username = data['username']
         password = data['password']
@@ -131,23 +113,33 @@ def get_passwd():
         os.remove('client_secrets.json')
         return username, password
     else:
-        return -2
+        return -3
     
-username, password = get_passwd()
+result = get_passwd()
 
-if username == -2:
-    with open('logs.txt', 'a') as file:
-        file.write('[ERR] get_passwd: client_secrets missing!')
+if type(result) == int:
+    if result == -3:
+        with open('logs.txt', 'a') as file:
+            file.write('[ERR] get_passwd: client_secrets missing!')
+    elif result == -2:
+        with open('logs.txt', 'a') as file:
+            file.write('[WARNING] get_passwd: Token changed!')
+    else:
+        with open('logs.txt', 'a') as file:
+            file.write('[ERR] get_passwd: generic error')
 
-options = {
-    'webdav_hostname': 'https://kai.nl.tab.digital/remote.php/webdav/',
-    'webdav_login': username,
-    'webdav_password': password,
-}
+else:
+    username = result[0]
+    password = result[1]
+    options = {
+        'webdav_hostname': 'https://kai.nl.tab.digital/remote.php/webdav/',
+        'webdav_login': username,
+        'webdav_password': password,
+    }
 
-client = Client(options)
-file = 'logins.enc'
-file_ = '/logins.enc'
+    client = Client(options)
+    file = 'logins.enc'
+    file_ = '/logins.enc'
 
 def Upload():
     # Connection
@@ -181,5 +173,5 @@ def Download():
             return -1
     except Exception as e:
         with open('logs.txt', 'a') as logs:
-            logs.write(f'\n[ERR] Upload: {e}\n')
+            logs.write(f'\n[ERR] Download: {e}\n')
         return -2

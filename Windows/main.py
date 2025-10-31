@@ -16,6 +16,7 @@ from connect import *
 import ctypes
 
 FILE = None
+download_notified = False
 logins = 'logins.json'
 en_logins = 'logins.enc'
 
@@ -177,9 +178,30 @@ def update_credentials(data):
 # === Home Page ===
 @ui.page('/')
 def home_page(): 
+    def run_download():
+        global download_notified
+        if not download_notified:
+            ui.notify("Connecting...", type='info')
+        download_notified = True
+        def task():
+            try:
+                os.remove("logins.json")
+                os.remove("logs.txt")
+                Download()
+            except Exception as exc:
+                ui.notify(f"Error: {exc}", type="negative")
+        threading.Thread(target=task, daemon=True).start()
+
+    if not os.path.exists(logins):
+        run_download()
+        time.sleep(3)
+        kill()
+
+
     #ui.dark_mode().enable()
     with ui.header(elevated=True).style('background-color: #1976d2; text-align: center; justify-content: center'):
         ui.label('PyPass - 1.0').style('font-size: 1.5rem; font-weight: bold; color: white;')
+
 
     if os.path.exists('logs.txt'):
         with open('logs.txt', 'r') as logs:
@@ -197,7 +219,8 @@ def home_page():
 
     def update_nextcloud():
         with open('logs.txt', 'r') as logs:
-            if '[WARNING] get_passwd: Token changed!' in logs.read():
+            text = logs.read()
+            if '[WARNING] get_passwd: Token changed!' in text or '[ERR] get_passwd: client_secrets missing!' in text:
                 print(logs.read())
                 with ui.dialog() as dialog, ui.card().classes('w-[600px] max-w-[90vw] items-center justify-center '):
                     ui.label('Insert your nextcloud credentials:').classes('text-3xl font-bold text-center mb-8')
@@ -547,15 +570,15 @@ def rem_passwd(service):
 
 def share_passwd(passwd):
     try:
-        password = passwd
-        qr_data_url = generate_qr_base64(password)
+        
+        qr_data_url = generate_qr_base64(passwd)
         with ui.dialog() as dialog:
             ui.image(qr_data_url).style("max-width: 25%")
         dialog.open()
     except FileNotFoundError:
         ui.notify("Please insert the USB key", type="negative")
-    except Exception:
-        ui.notify(f"Error: Password is not encrypted or the key is wrong!")
+    except Exception as e:
+        ui.notify(f"Error: {e}", type="negative")
     finally:
         if password: 
             secure_erase(password)
@@ -599,8 +622,6 @@ if __name__ in {"__main__", "__mp_main__"}:
     # "Disable" logs 
     sys.stderr = DummyStream()
     sys.stdout = DummyStream()
-
-    Download()
 
     ui.run(
             title='Password Manager',

@@ -1,0 +1,79 @@
+# PyPass Manager
+
+**PyPass Manager** is an open-source password manager that implements **end-to-end encryption (E2EE)** and **two-factor authentication (2FA)** to ensure the highest security for your sensitive data. This tool is designed to provide a secure, reliable, and easy-to-use solution for password management.
+
+---
+
+## 🔒 Security
+
+### End-to-End Encryption (E2EE)
+PyPass Manager uses the `cryptography.fernet` library to encrypt data locally before it is saved or synchronized. This means:
+- **Only you** can access your data, as encryption happens on your device.
+- Data is protected even during synchronization via WebDAV.
+
+### Master Key
+- The **master key** is stored on an external USB drive, ensuring that only someone with physical access to the USB can access the encrypted data.
+- The master key is required to encrypt and decrypt data, adding an extra layer of security.
+
+### Two-Factor Authentication (2FA)
+- **Mandatory**: PyPass Manager requires two-factor authentication to access its main features.
+- You can use an authentication app like **Google Authenticator** or **Authy** to generate 2FA codes.
+- This adds an additional layer of security, ensuring that even if someone gets your password, they cannot access your data without the second authentication factor.
+
+### Secure Password Generation
+- Generated passwords include a combination of uppercase letters, lowercase letters, numbers, and symbols.
+- Password generation happens locally on your device, ensuring that passwords are never transmitted in plaintext.
+
+---
+
+## 📋 Features
+
+- **Secure Password Generation**: Generates complex and secure passwords.
+- **End-to-End Encryption**: All passwords are encrypted before being saved or synchronized.
+- **WebDAV Synchronization**: Syncs encrypted data with a WebDAV server.
+- **Two-Factor Authentication (2FA)**: Additional protection for accessing main features.
+- **Key Management**: Uses a master key stored on a USB drive.
+- **QR Codes**: Generates QR codes for secure sharing of information.
+- **Intuitive User Interface**: Developed with `nicegui` for a simple and modern user experience.
+
+---
+
+## 📦 Libraries Used
+
+- `nicegui`: Framework for creating interactive web user interfaces.
+- `qrcode`: Library for generating QR codes.
+- `cryptography`: Library for encrypting and decrypting data, using secure algorithms like **Fernet** (AES in CBC mode with HMAC).
+- `webdav3`: Client for synchronizing with WebDAV servers.
+- `pyperclip`: Library for managing the system clipboard.
+- `os`, `json`, `base64`, `string`, `random`, `ctypes`: System libraries for file management, random data generation, and secure memory manipulation.
+
+---
+
+## ✨ Strengths
+
+- **Advanced Security**: Implementation of **end-to-end encryption** and **two-factor authentication (2FA)**.
+- **Portability**: Ability to synchronize encrypted data via WebDAV.
+- **Intuitive User Interface**: Uses `nicegui` for a simple and modern user experience.
+- **Robust Password Generation**: Generates secure and complex passwords that comply with security standards.
+
+---
+
+## 🔧 How to use PyPass (Windows Only)
+
+### STEP 1 - Installing the dependencies:
+- Install python from the official website: https://www.python.org/downloads/
+- Install the libraries: `pip install nicegui qrcode cryptography webdav3 pyperclip`
+- Install pyinstaller: `pip install pyinstaller`
+
+
+### STEP 2 - Installing PyPass: 
+- Clone the repository: `git clone https://github.com/Lif28/PyPass.git`
+- Open a terminal inside the folder PyPass.
+- Type `pyinstaller --noconfirm --onedir --windowed --icon "PyPass.ico" --name "PyPass" --clean --add-data "####\site-packages\nicegui;nicegui/" --add-data "connect.py;." --exclude-module "PyQt6" --exclude-module "PySide6"  "main.py"`
+  (replace #### with the directory of nicegui)
+
+### STEP 3 - Using PyPass:
+---
+
+## 📂 Project Structure
+

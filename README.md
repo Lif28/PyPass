@@ -73,6 +73,44 @@ PyPass Manager uses the `cryptography.fernet` library to encrypt data locally be
   (replace #### with the directory of nicegui)
 
 ### STEP 3 - Using PyPass:
+1) #### Open PyPass.
+
+<div align="center">
+  <br>
+  <img width="283" height="163" alt="image" src="https://github.com/user-attachments/assets/fdb1ceae-775e-4118-8ba0-fb59f6fa82ca" align="middle" />
+  <br>
+</div>
+
+2) #### Enter your nextcloud credentials.
+
+<div align="center">
+  <br>
+  <img width="1919" height="851" alt="image" src="https://github.com/user-attachments/assets/a063999e-5805-4bb6-bd26-a9e260578e7b" />
+  <br>
+</div>
+
+3) #### Start adding your logins (you can adjust the lenght of the password).
+
+<div align="center">
+  <br>
+  <img width="497" height="417" alt="image" src="https://github.com/user-attachments/assets/568994fc-62dd-4dd9-afae-87095f0c4709" />
+  <br>
+</div>
+
+4) #### See your logins by clicking the Personal button.
+
+<div align="center">
+  <br>
+  <img width="1919" height="907" alt="image" src="https://github.com/user-attachments/assets/74c26ef6-7369-43c3-9962-db853b5d6237" />
+  <br>
+</div>
+
+
+
+
+
+
+
 ---
 
 ## 📂 Project Structure

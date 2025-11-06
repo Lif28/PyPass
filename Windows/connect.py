@@ -120,7 +120,7 @@ result = get_passwd()
 if type(result) == int:
     if result == -3:
         with open('logs.txt', 'a') as file:
-            file.write('[ERR] get_passwd: client_secrets missing!')
+            file.write('\n[ERR] get_passwd: client_secrets missing!\n')
     elif result == -2:
         with open('logs.txt', 'a') as file:
             file.write('[WARNING] get_passwd: Token changed!')

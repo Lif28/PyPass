@@ -20,6 +20,9 @@ download_notified = False
 logins = 'logins.json'
 en_logins = 'logins.enc'
 
+if not os.path.exists('logs.txt'):
+    open('logs.txt', 'w').close()
+
 def generate_qr_base64(text: str) -> str:
     img = qrcode.make(text)
     buf = BytesIO()
@@ -178,13 +181,21 @@ def update_credentials(data):
 # === Home Page ===
 @ui.page('/')
 def home_page(): 
+    global download_notified
     def run_download():
         global download_notified
+
         if not download_notified:
             ui.notify("Connecting...", type='info')
         download_notified = True
         def task():
             try:
+                if os.path.exists('logs.txt'):
+                    with open('logs.txt', 'r') as logs:
+                        data = logs.read()
+                        if '[ERR] Download: Remote resource: /logins.enc not found' in data:
+                            ui.notify("No remote logins found — skipping download.", type="warning")
+
                 os.remove("logins.json")
                 os.remove("logs.txt")
                 Download()
@@ -192,10 +203,45 @@ def home_page():
                 ui.notify(f"Error: {exc}", type="negative")
         threading.Thread(target=task, daemon=True).start()
 
+
     if not os.path.exists(logins):
-        run_download()
-        time.sleep(3)
-        kill()
+        file_exists = os.path.exists("pypass.txt")
+
+        if os.path.exists("client_secrets.enc"):
+            run_download()
+            time.sleep(3)
+            kill()
+
+
+        elif not file_exists:
+                find()
+                if FILE is not None:
+                    key_path = fr"{FILE}:\PyPass\masterkey.key"
+
+                    # recreate masterkey 
+                    key = Fernet.generate_key()
+                    with open(key_path, "wb") as f:
+                        f.write(key)
+
+                    # Create pypass.txt
+                    with open("pypass.txt", "w") as pypass:
+                        pypass.write("PyPass 1.0")
+
+                    with ui.dialog() as dialog, ui.card().classes('w-[600px] max-w-[90vw] items-center justify-center '):
+                        ui.label('Insert your nextcloud credentials:').classes('text-3xl font-bold text-center mb-8')
+                        username = ui.input('Username').style("width: 200px")
+                        password = ui.input('Password', password=True).style("width: 200px")
+                        with ui.row().classes('gap-4 justify-end'):
+                            ui.button('Save', on_click= lambda: update_credentials({"username":f"{username.value}", "password":f"{password.value}"})).props('color=negative')
+                            print(username.value, password.value)
+                            ui.button('Cancel', on_click= kill)
+                    dialog.open()
+                    
+                    
+                else:
+                    ui.notify("Please insert the USB key with masterkey.key", type="negative")
+                    return
+
 
 
     #ui.dark_mode().enable()
@@ -218,19 +264,20 @@ def home_page():
         dialog.open()
 
     def update_nextcloud():
-        with open('logs.txt', 'r') as logs:
-            text = logs.read()
-            if '[WARNING] get_passwd: Token changed!' in text or '[ERR] get_passwd: client_secrets missing!' in text:
-                print(logs.read())
-                with ui.dialog() as dialog, ui.card().classes('w-[600px] max-w-[90vw] items-center justify-center '):
-                    ui.label('Insert your nextcloud credentials:').classes('text-3xl font-bold text-center mb-8')
-                    username = ui.input('Username').style("width: 200px")
-                    password = ui.input('Password', password=True).style("width: 200px")
-                    with ui.row().classes('gap-4 justify-end'):
-                        ui.button('Save', on_click= lambda: update_credentials({"username":f"{username.value}", "password":f"{password.value}"})).props('color=negative')
-                        print(username.value, password.value)
-                        ui.button('Cancel', on_click= kill)
-                dialog.open()
+        if os.path.exists("logs.txt"):
+            with open('logs.txt', 'r') as logs:
+                text = logs.read()
+                if '[WARNING] get_passwd: Token changed!' in text or '[ERR] get_passwd: client_secrets missing!' in text:
+                    print(logs.read())
+                    with ui.dialog() as dialog, ui.card().classes('w-[600px] max-w-[90vw] items-center justify-center '):
+                        ui.label('Insert your nextcloud credentials:').classes('text-3xl font-bold text-center mb-8')
+                        username = ui.input('Username').style("width: 200px")
+                        password = ui.input('Password', password=True).style("width: 200px")
+                        with ui.row().classes('gap-4 justify-end'):
+                            ui.button('Save', on_click= lambda: update_credentials({"username":f"{username.value}", "password":f"{password.value}"})).props('color=negative')
+                            print(username.value, password.value)
+                            ui.button('Cancel', on_click= kill)
+                    dialog.open()
 
     
     with ui.column().classes('w-full max-w-md mx-auto mt-10 gap-4'):
@@ -239,13 +286,19 @@ def home_page():
             if os.path.exists(rf"{FILE}:\PyPass\masterkey.key"):
                 with ui.column().classes('gap-4'):
                     if not os.path.exists(logins) or os.path.getsize(logins) <= 1:
-                        ui.button('Personal', on_click=show_personal, icon='person').classes('w-full h-12 text-lg').props('color=primary size=lg').disable()
+                        download_notified = True
+                        ui.button('Personal', on_click=show_personal, icon='person')
                         find()
-                        if FILE != None:
+                        if FILE is not None:
                             try:
-                                threading.Thread(target=Download).start()
-                                decrypt_file(en_logins, logins) # Used if we changed token and went back to /
-                            except Exception as e: 
+                                if os.path.exists(en_logins):
+                                    threading.Thread(target=Download).start()
+                                    decrypt_file(en_logins, logins)  # Only if file exists
+                                else:
+                                    # Nessun backup remoto, crea file vuoto
+                                    with open(logins, 'w') as f:
+                                        json.dump([], f)
+                            except Exception as e:
                                 ui.notify(f"[ERR] {e}", type='negative')
                     else:
                         ui.button('Personal', on_click=show_personal, icon='person').classes('w-full h-12 text-lg').props('color=primary size=lg')
@@ -260,8 +313,10 @@ def home_page():
                         ui.button('Add Password', on_click=show_add_password, icon='add').classes('w-full h-12 text-lg').props('color=primary size=lg')
                         ui.button('New Token', on_click= warning, icon='generating_tokens').classes('w-full h-12 text-lg').props('color="primary" size=lg')
                     ui.button('Quit', on_click=shutdown, icon='highlight_off', color='#C0392B').classes('w-full h-12 text-lg text-white')
-            if os.path.exists('logs.txt'):
+
+            if (not os.path.exists('client_secrets.json') or os.path.exists('logs.txt')) and os.path.exists("pypass.txt"):
                 update_nextcloud()
+
 
 
 
@@ -427,12 +482,11 @@ def add_login():
             def perform():
                 # Append new login
                 data.append(login)
-
+                
                 # Write back to file
                 with open(logins, 'w') as f:
                     json.dump(data, f, indent=4)
 
-                # Google Drive
 
                 threading.Thread(target=Upload).start()
                 if check_network() == -1:

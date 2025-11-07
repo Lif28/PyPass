@@ -66,11 +66,13 @@ PyPass Manager uses the `cryptography.fernet` library to encrypt data locally be
 - Install pyinstaller: `pip install pyinstaller`
 
 
-### STEP 2 - Installing PyPass: 
+### STEP 2 - Installing PyPass & Setup: 
 - Clone the repository: `git clone https://github.com/Lif28/PyPass.git`
 - Open a terminal inside the folder PyPass.
 - Type `pyinstaller --noconfirm --onedir --windowed --icon "PyPass.ico" --name "PyPass" --clean --add-data "####\site-packages\nicegui;nicegui/" --add-data "connect.py;." --exclude-module "PyQt6" --exclude-module "PySide6"  "main.py"`
   (replace #### with the directory of nicegui)
+- Insert your USB drive into the computer, create a folder named PyPass, and inside it add a file called masterkey.key.
+This file will be replaced automatically, so you can leave it empty or write anything you like inside.
 
 ### STEP 3 - Using PyPass:
 1) #### Open PyPass.

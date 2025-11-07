@@ -109,7 +109,7 @@ This file will be replaced automatically, so you can leave it empty or write any
   <br>
 </div>
 
-2) #### You can change token, be sure to *always* have a copy of the new and old token in another USB key.
+2) #### You can change the token by clicking the Token button. Make sure to *always* keep a copy of both the new and old tokens on another USB drive.
 
 <div align="center">
   <br>

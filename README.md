@@ -99,13 +99,38 @@ This file will be replaced automatically, so you can leave it empty or write any
   <br>
 </div>
 
-4) #### See your logins by clicking the Personal button.
+
+### Functionalities
+1) #### You can see your logins by clicking the Personal button.
 
 <div align="center">
   <br>
   <img width="1919" height="907" alt="image" src="https://github.com/user-attachments/assets/74c26ef6-7369-43c3-9962-db853b5d6237" />
   <br>
 </div>
+
+2) #### You can change token, be sure to *always* have a copy of the new and old token in another USB key.
+
+<div align="center">
+  <br>
+  <img width="1919" height="909" alt="image" src="https://github.com/user-attachments/assets/9a7235fc-467e-44e3-8db1-6cab41629d34" />
+  <br>
+</div>
+
+3) #### Copy, Share and see your password.
+
+<div align="center">
+  <br>
+  <img width="1918" height="910" alt="image" src="https://github.com/user-attachments/assets/63b67b17-bb85-4605-9c96-515d4bd268c8" />
+  <br>
+</div>
+
+<div align="center">
+  <br>
+  <img width="1919" height="906" alt="image" src="https://github.com/user-attachments/assets/eba51e0e-8311-4350-b06f-f48af3efccf2" />
+  <br>
+</div>
+
 
 
 

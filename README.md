@@ -136,5 +136,4 @@ This file will be replaced automatically, so you can leave it empty or write any
 
 ---
 
-## 📂 Project Structure
 

@@ -11,14 +11,10 @@ PyPass Manager uses the `cryptography.fernet` library to encrypt data locally be
 - **Only you** can access your data, as encryption happens on your device.
 - Data is protected even during synchronization via WebDAV.
 
-### Master Key
+### Two-Factor Authentication (2FA)
 - The **master key** is stored on an external USB drive, ensuring that only someone with physical access to the USB can access the encrypted data.
 - The master key is required to encrypt and decrypt data, adding an extra layer of security.
-
-### Two-Factor Authentication (2FA)
-- **Mandatory**: PyPass Manager requires two-factor authentication to access its main features.
-- You can use an authentication app like **Google Authenticator** or **Authy** to generate 2FA codes.
-- This adds an additional layer of security, ensuring that even if someone gets your password, they cannot access your data without the second authentication factor.
+- Without the USB key you can't access your logins even if their downloaded on your computer.
 
 ### Secure Password Generation
 - Generated passwords include a combination of uppercase letters, lowercase letters, numbers, and symbols.
@@ -31,8 +27,7 @@ PyPass Manager uses the `cryptography.fernet` library to encrypt data locally be
 - **Secure Password Generation**: Generates complex and secure passwords.
 - **End-to-End Encryption**: All passwords are encrypted before being saved or synchronized.
 - **WebDAV Synchronization**: Syncs encrypted data with a WebDAV server.
-- **Two-Factor Authentication (2FA)**: Additional protection for accessing main features.
-- **Key Management**: Uses a master key stored on a USB drive.
+- **Two-Factor Authentication (2FA)**: Additional protection for accessing passwords and logins.
 - **QR Codes**: Generates QR codes for secure sharing of information.
 - **Intuitive User Interface**: Developed with `nicegui` for a simple and modern user experience.
 
@@ -52,7 +47,7 @@ PyPass Manager uses the `cryptography.fernet` library to encrypt data locally be
 ## ✨ Strengths
 
 - **Advanced Security**: Implementation of **end-to-end encryption** and **two-factor authentication (2FA)**.
-- **Portability**: Ability to synchronize encrypted data via WebDAV.
+- **Portability**: Ability to synchronize encrypted data via WebDAV (Nextcloud).
 - **Intuitive User Interface**: Uses `nicegui` for a simple and modern user experience.
 - **Robust Password Generation**: Generates secure and complex passwords that comply with security standards.
 
@@ -64,10 +59,11 @@ PyPass Manager uses the `cryptography.fernet` library to encrypt data locally be
 - Install python from the official website: https://www.python.org/downloads/
 - Install the libraries: `pip install nicegui qrcode cryptography webdav3 pyperclip`
 - Install pyinstaller: `pip install pyinstaller`
+- Create a Nextcloud account at https://kai.nl.tab.digital/apps/registration/. You don’t need to add or use it for anything else — Nextcloud is only used to securely and encrypt your stored logins. Just make sure to remember your Nextcloud credentials.
 
 
 ### STEP 2 - Installing PyPass & Setup: 
-- Clone the repository: `git clone https://github.com/Lif28/PyPass.git`
+- Download the most recent version of PyPass
 - Open a terminal inside the folder PyPass.
 - Type `pyinstaller --noconfirm --onedir --windowed --icon "PyPass.ico" --name "PyPass" --clean --add-data "####\site-packages\nicegui;nicegui/" --add-data "connect.py;." --exclude-module "PyQt6" --exclude-module "PySide6"  "main.py"`
   (replace #### with the directory of nicegui)

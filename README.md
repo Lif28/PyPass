@@ -1,4 +1,4 @@
-# PyPass
+# PyPass – Secure E2EE Password Manager with USB 2FA & WebDAV Sync
 
 **PyPass** is an open-source password manager that implements **end-to-end encryption (E2EE)** and **two-factor authentication (2FA)** to ensure the highest security for your sensitive data. This tool is designed to provide a secure, reliable, and easy-to-use solution for password management.
 
